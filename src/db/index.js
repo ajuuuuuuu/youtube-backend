@@ -1,6 +1,7 @@
 import mongoose from "mongoose"
 
 import { DB_NAME } from "../constants.js"
+// asynchronous method return a promise
 
 const connectDB = async () => {
     try{
@@ -8,7 +9,7 @@ const connectDB = async () => {
         console.log(`\n MONGO DB connected !! DB HOST : ${connectionInstance.connection.host}`)
     }
     catch(error){
-        console.log("MONGODB connection error",error)
+        console.log("MONGODB connection failed",error)
         process.exit(1)
     }
 }
