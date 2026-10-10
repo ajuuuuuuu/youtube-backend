@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.models.js";
 import { uploadOnCloudinary } from "../utils/Cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { JsonWebTokenError } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -180,7 +180,7 @@ const logoutUser = asyncHandler(async (req, res) => {
 const refreshAccessToken = asyncHandler(async(req, res)=>{
   const incommingRefresehToken =req.cookie.refreshToken || req.body.refreshToken
 
-  if(incommingRefresehToken){
+  if(!incommingRefresehToken){
     throw new ApiError(401, "unauthorized requeset")
   }
 try {
