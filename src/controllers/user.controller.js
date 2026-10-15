@@ -4,6 +4,7 @@ import { User } from "../models/user.models.js";
 import { uploadOnCloudinary } from "../utils/Cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -159,9 +160,6 @@ const logoutUser = asyncHandler(async (req, res) => {
       $unset: {
         refreshToken: 1,
       },
-    },
-    {
-      new: true,
     }
   );
 
@@ -178,15 +176,15 @@ const logoutUser = asyncHandler(async (req, res) => {
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incommingRefresehToken =
-    req.cookie.refreshToken || req.body.refreshToken;
+  const incomingRefreshToken =
+    req.cookies?.refreshToken || req.body?.refreshToken;
 
-  if (!incommingRefresehToken) {
+  if (!incomingRefreshToken) {
     throw new ApiError(401, "unauthorized requeset");
   }
   try {
     const decodedToken = jwt.verify(
-      incommingRefresehToken,
+      incomingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET
     );
     const user = await User.findById(decodedToken?._id);
@@ -194,15 +192,15 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       throw new ApiError(401, "invalid refresh token");
     }
 
-    if (incommingRefresehToken !== user?.refreshToken) {
+    if (incomingRefreshToken !== user?.refreshToken) {
       throw new ApiError(401, "RefreshToken is expired or used");
     }
 
     const options = {
-      httpsOnly: true,
-      secured: true,
+      httpOnly: true,
+      secure: true,
     };
-    const { accessToken, newRefreshToken } =
+    const { accessToken, refreshToken: newRefreshToken } =
       await generateAccessAndRefreshTokens(user._id);
 
     return res
@@ -243,7 +241,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
-    .json(200, req.user, "Current user fetched succesfully");
+    .json(new ApiResponse(200, req.user, "Current user fetched succesfully"));
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
@@ -259,9 +257,8 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
         email: email,
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   ).select("-password");
-
   return res
     .status(200)
     .json(new ApiResponse(200, user, "Account details update successully"));
@@ -288,7 +285,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         avatar: avatar.url,
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   ).select("-password");
 
   return res
@@ -316,7 +313,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
         avatar: coverImage.url,
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   ).select("-password");
 
   return res
@@ -392,53 +389,59 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
   .json(new ApiResponse(200 , channel[0],"User channel fetched successifully"))
 });
 
-const getWatchHistory = asyncHandler(async(req,res)=>{
+const getWatchHistory = asyncHandler(async (req, res) => {
   const user = await User.aggregate([
     {
-      $match:{
-        _id: new mongoose.Types.ObjectId(req.user._id)
-      }
+      $match: {
+        _id: mongoose.Types.ObjectId(req.user._id),
+      },
     },
     {
       $lookup: {
-        from:"videos",
+        from: "videos",
         localField: "watchHistroy",
-        foreignField:"_id",
-        as:"watchHistory",
-        pipeline:[
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
           {
-            $lookup:{
-              from :"user",
-              localField:"owner",
-              foreignField:"_id",
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
               as: "owner",
-              pipeline:[
+              pipeline: [
                 {
-                  $project:{
-                    fullName:1,
-                    username:1,
-                    avatar:1
-                  }
-                }
-              ]
-            }
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
           },
           {
-            $addField:{
-              owner:{
-                $first:"$owner"
-              }
-            }
-          }
-        ]
-      }
-    }
-  ])
+            $addFields: {
+              owner: {
+                $first: "$owner",
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
 
   return res
-  .status(200)
-  .json(new ApiResponse(200,user[0].getWatchHistory,"watch history fetched successfully"))
-})
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user[0]?.watchHistory || [],
+        "Watch history fetched successfully"
+      )
+    );
+});
 
 export {
   registerUser,
