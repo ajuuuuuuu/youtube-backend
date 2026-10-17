@@ -1,5 +1,6 @@
 import {v2 as cloudinary} from "cloudinary"
 import fs from "fs"
+import { unlink } from "node:fs/promises"
 
 
 cloudinary.config({ 
@@ -28,6 +29,27 @@ const uploadOnCloudinary = async (localFilePath) => {
 
 }
 
+const removeLocalFiles = async (localFilePaths) => {
+    await Promise.all(
+        localFilePaths.filter(Boolean).map((filePath) => unlink(filePath))
+    )
+}
 
+const deleteFromCloudinary = async (publicId, resourceType) => {
+    if (!publicId) {
+        throw new Error("Cloudinary public ID is required")
+    }
 
-export {uploadOnCloudinary}
+    const result = await cloudinary.uploader.destroy(publicId, {
+        resource_type: resourceType,
+        invalidate: true,
+    })
+
+    if (result.result !== "ok" && result.result !== "not found") {
+        throw new Error(`Cloudinary asset deletion failed: ${result.result}`)
+    }
+
+    return result
+}
+
+export {uploadOnCloudinary, removeLocalFiles, deleteFromCloudinary}

@@ -33,6 +33,9 @@ const userSchema = new Schema(
     coverImage: {
       type: String, // cloudinary url
     },
+    avatarPublicId:{
+      type:String,
+    },
     watchHistroy: [{ type: Schema.Types.ObjectId, ref: "Video" }],
     password: {
       type: String,

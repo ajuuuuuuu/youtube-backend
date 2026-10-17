@@ -12,5 +12,11 @@ const storage = multer.diskStorage({
         }
 
 })
+const upload = multer({storage })
 
-export const upload = multer({storage })
+const uploadVideoFiles = upload.fields([
+  { name: "videoFile", maxCount: 1 },
+  { name: "thumbnail", maxCount: 1 },
+]);
+
+export {upload,uploadVideoFiles}
