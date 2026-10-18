@@ -331,21 +331,57 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     throw new ApiError(400, "CoverImage file  is missing");
   }
 
-  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+const currentUser = await User.findById(req.user._id);
+  if (!currentUser) {
+    throw new ApiError(404, "User not found");
+  }
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-  if (!coverImage.url) {
-    throw new ApiError(400, "Error while uploding on coverImage");
+  if (!coverImage?.url || !coverImage?.public_id) {
+    throw new ApiError(502, "Could not upload avatar to Cloudinary");
   }
 
-  const user = await User.findByIdAndUpdate(
-    req.user?._id,
-    {
-      $set: {
-        coverImage: coverImage.url,
-      },
-    },
-    { returnDocument: "after" }
-  ).select("-password");
+
+  const previousAvatarPublicId = currentUser.avatarPublicId;
+  currentUser.avatar = avatar.url;
+  currentUser.avatarPublicId = avatar.public_id;
+
+
+ try {
+    await currentUser.save();
+  } catch (error) {
+    try {
+      await deleteFromCloudinary(avatar.public_id, "image");
+    } catch (cleanupError) {
+      console.error(
+        "Failed to clean up avatar after database update failed:",
+        cleanupError
+      );
+    }
+    throw error;
+  }
+
+
+  
+  if (previousAvatarPublicId && previousAvatarPublicId !== avatar.public_id) {
+    try {
+      await deleteFromCloudinary(previousAvatarPublicId, "image");
+    } catch (error) {
+      console.error(
+        "Avatar updated, but previous Cloudinary image cleanup failed:",
+        error
+      );
+      throw new ApiError(
+        502,
+        "Avatar was updated, but its previous Cloudinary image could not be deleted"
+      );
+    }
+  }
+const updatedUser = currentUser.toObject();
+  delete updatedUser.password;
+  delete updatedUser.refreshToken;
+
+
 
   return res
     .status(200)
