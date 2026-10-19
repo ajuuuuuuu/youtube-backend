@@ -16,6 +16,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
     throw new ApiError(400, "invalid video id");
   }
 
+console.log("1")
   const video = await Video.findById(videoId);
   if (!video) {
     throw new ApiError(404, "video not found");
@@ -26,13 +27,13 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
   });
 
   
-
+console.log("2")
   if (existingLike) {
     await Like.findByIdAndDelete(existingLike._id);
-
+console.log("3")
     return res
       .status(200)
-      .json(new ApiResponse(200, { liked: false }, "like removed"));
+      .json(new ApiResponse(200, { liked: false }, "Like removed"));
   }
 
   await Like.create({
@@ -120,7 +121,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
   //TODO: get all liked videos
   const userId  = req.user._id;
 
-  const likeRecords = await Like.find({
+  const likedRecords = await Like.find({
     likedBy: userId,
     video: { $ne: null },
   })
@@ -140,7 +141,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
 
     return res
     .status(200)
-    .json(new ApiResponse(200,likedVideos,"liked Videos fetched successfully"))
+    .json(new ApiResponse(200,likedVideos,"Liked Videos fetched successfully"))
 });
 
 export { toggleCommentLike, toggleTweetLike, toggleVideoLike, getLikedVideos };
